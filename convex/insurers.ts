@@ -23,6 +23,18 @@ export const getById = query({
   },
 });
 
+export const getByUserId = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const insurer = await ctx.db
+      .query("insurers")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+
+    return insurer;
+  },
+});
+
 // Add a new insurer
 export const add = mutation({
   args: {
@@ -33,15 +45,101 @@ export const add = mutation({
     userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const insurerId = await ctx.db.insert("insurers", {
-      companyName: args.companyName,
-      email: args.email,
-      phone: args.phone,
-      address: args.address,
-      userId: args.userId,
+    const newInsurerId = await ctx.db.insert("insurers", {
+      ...args,
       createdAt: Date.now(),
     });
-    return insurerId;
+
+    return newInsurerId;
+  },
+});
+
+// Add a new policy to an insurer's portfolio
+export const addPolicy = mutation({
+  args: {
+    insurerId: v.id("insurers"),
+    policy: v.object({
+      name: v.string(),
+      storageId: v.id("_storage"),
+      type: v.union(v.literal("health"), v.literal("auto"), v.literal("home")),
+      premium: v.string(),
+      years: v.string(),
+      sumInsured: v.string(),
+      features: v.array(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const { insurerId, policy } = args;
+
+    // Get the current insurer
+    const insurer = await ctx.db.get(insurerId);
+    if (!insurer) {
+      throw new Error("Insurer not found");
+    }
+
+    // Add policy to insurer's policies array
+    const existingPolicies = insurer.policies || [];
+    await ctx.db.patch(insurerId, {
+      policies: [...existingPolicies, policy],
+    });
+
+    // Also add an entry to the policies table with all details
+    const policyId = await ctx.db.insert("policies", {
+      name: policy.name,
+      storageId: policy.storageId,
+      insurer: insurerId,
+      type: policy.type,
+      premium: policy.premium,
+      years: policy.years,
+      sumInsured: policy.sumInsured,
+      features: policy.features,
+      provider: insurer.companyName, // Use the insurer's company name as provider
+    });
+
+    return policyId;
+  },
+});
+
+// Add multiple policies at once to an insurer
+export const addPolicies = mutation({
+  args: {
+    insurerId: v.id("insurers"),
+    policies: v.array(
+      v.object({
+        storageId: v.id("_storage"),
+        name: v.string(),
+        type: v.union(
+          v.literal("health"),
+          v.literal("auto"),
+          v.literal("home")
+        ),
+        premium: v.string(),
+        years: v.string(),
+        sumInsured: v.string(),
+        features: v.array(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const insurer = await ctx.db.get(args.insurerId);
+
+    if (!insurer) {
+      throw new Error("Insurer not found");
+    }
+
+    const existingPolicies = insurer.policies || [];
+
+    const updatedPolicies = [...existingPolicies, ...args.policies];
+
+    await ctx.db.patch(args.insurerId, {
+      policies: updatedPolicies,
+    });
+
+    return {
+      insurerId: args.insurerId,
+      totalPolicies: updatedPolicies.length,
+      addedPolicies: args.policies.length,
+    };
   },
 });
 

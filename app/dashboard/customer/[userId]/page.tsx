@@ -2,8 +2,12 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface Policy {
+  _id?: Id<"policies">;
   expiryDate: string;
   features: string[];
   name: string;
@@ -17,6 +21,7 @@ interface Policy {
 const Dashboard = ({ params }: { params: Promise<{ userId: string }> }) => {
   const resolvedParams = React.use(params);
   const { userId } = resolvedParams;
+  const router = useRouter();
 
   const [policies, setPolicies] = useState<Policy[]>([]);
 
@@ -24,11 +29,28 @@ const Dashboard = ({ params }: { params: Promise<{ userId: string }> }) => {
     userId,
   });
 
+  // Fetch all policies to get their IDs
+  const allPolicies = useQuery(api.policies.getAll);
+
   useEffect(() => {
-    if (customer?.pastPolicies) {
-      setPolicies(customer.pastPolicies);
+    if (customer?.pastPolicies && allPolicies) {
+      // Enhance customer policies with their IDs from allPolicies
+      const enhancedPolicies = customer.pastPolicies.map((policy) => {
+        const matchedPolicy = allPolicies.find(
+          (p) => p.storageId === policy.storageId
+        );
+        return {
+          ...policy,
+          _id: matchedPolicy?._id,
+        };
+      });
+      setPolicies(enhancedPolicies);
     }
-  }, [customer]);
+  }, [customer, allPolicies]);
+
+  const handleViewDetails = (policyId: Id<"policies">) => {
+    router.push(`/policy/${policyId}`);
+  };
 
   return (
     <main className="mx-auto p-6 max-w-4xl">
@@ -39,7 +61,7 @@ const Dashboard = ({ params }: { params: Promise<{ userId: string }> }) => {
         <div className="bg-gray-50 p-4 rounded text-gray-500">
           {policies.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {customer?.pastPolicies?.map((policy) => (
+              {policies.map((policy) => (
                 <div
                   key={policy.storageId}
                   className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col"
@@ -111,6 +133,19 @@ const Dashboard = ({ params }: { params: Promise<{ userId: string }> }) => {
                         </div>
                       </div>
                     )}
+
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <Button
+                        variant="outline"
+                        className="w-full text-blue-600 hover:bg-blue-50"
+                        onClick={() =>
+                          policy._id && handleViewDetails(policy._id)
+                        }
+                        disabled={!policy._id}
+                      >
+                        View Details
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

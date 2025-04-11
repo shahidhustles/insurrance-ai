@@ -101,7 +101,7 @@ const UploadPage = ({ params }: { params: Promise<{ userId: string }> }) => {
   };
 
   const handleGoToDashboard = () => {
-    router.push(`/dashboard/${userId}`);
+    router.push(`/dashboard/customer/${userId}`);
   };
 
   return (

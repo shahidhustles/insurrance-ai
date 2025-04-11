@@ -42,7 +42,7 @@ export const generateUploadUrl = mutation({
 
 export const generateUrlForImage = mutation({
   args: {
-    storageId: v.id("_storage"),
+    storageId: v.string(),
   },
   handler: async (ctx, args) => {
     return await ctx.storage.getUrl(args.storageId);

@@ -105,43 +105,37 @@ export const addPastPolicy = mutation({
       name: v.string(),
       storageId: v.id("_storage"),
       provider: v.string(),
-      type: v.union(
-        v.literal("health"),
-        v.literal("auto"),
-        v.literal("home")
-      ),
+      type: v.union(v.literal("health"), v.literal("auto"), v.literal("home")),
       sumInsured: v.string(),
       premium: v.string(),
       expiryDate: v.string(),
       features: v.array(v.string()),
+      purchaseDate: v.optional(v.string()),
     }),
   },
   handler: async (ctx, args) => {
     const customer = await ctx.db.get(args.customerId);
-    
+
     if (!customer) {
       throw new Error("Customer not found");
     }
 
     const pastPolicies = customer.pastPolicies || [];
-    
-  
+
     const updatedPolicies = [...pastPolicies, args.policy];
-    
-    
+
     await ctx.db.patch(args.customerId, {
       pastPolicies: updatedPolicies,
     });
-    
+
     return {
       customerId: args.customerId,
       addedPolicy: args.policy,
       totalPolicies: updatedPolicies.length,
-      policyIndex: updatedPolicies.length - 1 
+      policyIndex: updatedPolicies.length - 1,
     };
   },
 });
-
 
 export const updatePastPolicy = mutation({
   args: {
@@ -151,38 +145,40 @@ export const updatePastPolicy = mutation({
       name: v.optional(v.string()),
       storageId: v.optional(v.id("_storage")),
       provider: v.optional(v.string()),
-      type: v.optional(v.union(
-        v.literal("health"),
-        v.literal("auto"),
-        v.literal("home")
-      )),
+      type: v.optional(
+        v.union(v.literal("health"), v.literal("auto"), v.literal("home"))
+      ),
       sumInsured: v.optional(v.string()),
       premium: v.optional(v.string()),
       expiryDate: v.optional(v.string()),
       features: v.optional(v.array(v.string())),
+      purchaseDate: v.optional(v.string()),
     }),
   },
   handler: async (ctx, args) => {
     const customer = await ctx.db.get(args.customerId);
-    
+
     if (!customer || !customer.pastPolicies) {
       throw new Error("Customer or past policies not found");
     }
-    
-    if (args.policyIndex < 0 || args.policyIndex >= customer.pastPolicies.length) {
+
+    if (
+      args.policyIndex < 0 ||
+      args.policyIndex >= customer.pastPolicies.length
+    ) {
       throw new Error("Invalid policy index");
     }
-    
+
     const updatedPolicies = [...customer.pastPolicies];
     updatedPolicies[args.policyIndex] = {
       ...updatedPolicies[args.policyIndex],
-      ...args.updatedFields
+      ...args.updatedFields,
     };
-    
+
     await ctx.db.patch(args.customerId, {
       pastPolicies: updatedPolicies,
     });
-    
+
     return args.customerId;
   },
 });
@@ -195,24 +191,27 @@ export const removePastPolicy = mutation({
   },
   handler: async (ctx, args) => {
     const customer = await ctx.db.get(args.customerId);
-    
+
     if (!customer || !customer.pastPolicies) {
       throw new Error("Customer or past policies not found");
     }
-    
-    if (args.policyIndex < 0 || args.policyIndex >= customer.pastPolicies.length) {
+
+    if (
+      args.policyIndex < 0 ||
+      args.policyIndex >= customer.pastPolicies.length
+    ) {
       throw new Error("Invalid policy index");
     }
-    
+
     // Filter out the policy to remove
     const updatedPolicies = customer.pastPolicies.filter(
       (_, index) => index !== args.policyIndex
     );
-    
+
     await ctx.db.patch(args.customerId, {
       pastPolicies: updatedPolicies,
     });
-    
+
     return args.customerId;
   },
 });
@@ -235,32 +234,66 @@ export const addMultiplePastPolicies = mutation({
         premium: v.string(),
         expiryDate: v.string(),
         features: v.array(v.string()),
+        purchaseDate: v.string(),
       })
     ),
   },
   handler: async (ctx, args) => {
     // Get the customer to check if pastPolicies already exists
     const customer = await ctx.db.get(args.customerId);
-    
+
     if (!customer) {
       throw new Error("Customer not found");
     }
 
     // Initialize pastPolicies as empty array if it doesn't exist
     const existingPolicies = customer.pastPolicies || [];
-    
+
     // Combine existing policies with new ones
     const updatedPolicies = [...existingPolicies, ...args.policies];
-    
+
     // Update the customer record with all policies at once
     await ctx.db.patch(args.customerId, {
       pastPolicies: updatedPolicies,
     });
-    
+
     return {
       customerId: args.customerId,
       totalPolicies: updatedPolicies.length,
-      addedPolicies: args.policies.length
+      addedPolicies: args.policies.length,
+    };
+  },
+});
+
+// Add recommended policies to a customer
+export const updateRecommendedPolicies = mutation({
+  args: {
+    customerId: v.id("customers"),
+    recommendedPolicies: v.array(
+      v.object({
+        policyId: v.id("policies"),
+        confidenceScore: v.number(),
+        summary: v.string(),
+        reasons: v.array(v.string()),
+        benefitsForCustomer: v.array(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const customer = await ctx.db.get(args.customerId);
+
+    if (!customer) {
+      throw new Error("Customer not found");
+    }
+
+    // Update the customer record with recommended policies
+    await ctx.db.patch(args.customerId, {
+      recommendedPolicies: args.recommendedPolicies,
+    });
+
+    return {
+      customerId: args.customerId,
+      recommendedPoliciesCount: args.recommendedPolicies.length,
     };
   },
 });

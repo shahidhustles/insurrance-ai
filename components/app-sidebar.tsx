@@ -1,5 +1,6 @@
-import { FileUp, Home, ThumbsUp } from "lucide-react";
+import { FileUp, Home, Loader2, ThumbsUp } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 import {
   Sidebar,
@@ -13,24 +14,45 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useNavigation } from "@/lib/navigation-context";
 
 export function AppSidebar() {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
-  const userId = params.userId as string;
+  const { navigating, navigatingTo, startNavigation } = useNavigation();
+  const [previousPath, setPreviousPath] = useState<string | null>(null);
+
+  let userId = params.userId as string;
 
   // Check if the current path matches the menu item URL
   const isActive = (itemUrl: string) => {
     return pathname.startsWith(itemUrl);
   };
 
+  // Track path changes to detect when navigation completes
+  useEffect(() => {
+    if (previousPath !== pathname) {
+      setPreviousPath(pathname);
+    }
+  }, [pathname, previousPath]);
+
+  const { user } = useUser();
+  if (!userId) {
+    userId = user?.id || "";
+  }
+  const role = useQuery(api.users.getUserRole, {
+    userId,
+  });
+
   // Menu items for the sidebar
   const items = [
     {
       title: "My Policies",
-      url: `/dashboard/${userId}`,
+      url: `/dashboard/${role}/${userId}`,
       icon: Home,
     },
     {
@@ -40,15 +62,23 @@ export function AppSidebar() {
     },
     {
       title: "Upload",
-      url: `/upload/${userId}`,
+      url: `/upload/${role}/${userId}`,
       icon: FileUp,
     },
   ];
 
+  // Handle navigation with loading state
+  const handleNavigation = (url: string) => {
+    startNavigation(url);
+    router.push(url);
+  };
+
   return (
     <Sidebar>
-      <SidebarHeader onClick={() => router.push("/")}>
-        <h2 className="text-xl font-semibold px-4 cursor-pointer">Insurance AI</h2>
+      <SidebarHeader onClick={() => handleNavigation("/")}>
+        <h2 className="text-xl font-semibold px-4 cursor-pointer">
+          Insurance AI
+        </h2>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -58,11 +88,17 @@ export function AppSidebar() {
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    onClick={() => router.push(item.url)}
+                    onClick={() => handleNavigation(item.url)}
                     isActive={isActive(item.url)}
                     tooltip={item.title}
+                    disabled={navigating}
+                    className={navigatingTo === item.url ? "relative" : ""}
                   >
-                    <item.icon className="h-4 w-4 mr-2" />
+                    {navigatingTo === item.url ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin text-primary" />
+                    ) : (
+                      <item.icon className="h-4 w-4 mr-2" />
+                    )}
                     {item.title}
                   </SidebarMenuButton>
                 </SidebarMenuItem>

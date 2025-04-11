@@ -2,7 +2,7 @@
 
 import { SharedSidebarLayout } from "@/components/shared-sidebar-layout";
 
-export default function DashboardLayout({
+export default function PolicyLayout({
   children,
 }: {
   children: React.ReactNode;

@@ -8,7 +8,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-const mistral = createMistral({
+export const mistral = createMistral({
   apiKey: process.env.MISTRAL_API_KEY,
 });
 export async function getOcrPolicy(storageId: Id<"_storage">) {

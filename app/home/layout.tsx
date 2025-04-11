@@ -2,7 +2,7 @@
 
 import { SharedSidebarLayout } from "@/components/shared-sidebar-layout";
 
-export default function DashboardLayout({
+export default function RecommendationLayout({
   children,
 }: {
   children: React.ReactNode;
