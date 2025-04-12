@@ -1,6 +1,6 @@
 "use client"
 
-import Image from "next/image";
+
 import { useRouter } from "next/navigation";
 
 export default function Home() {
@@ -17,13 +17,7 @@ export default function Home() {
           </button>
         </div>
         <div className="md:w-1/2">
-          <Image
-            src="/insurance-ai-hero.png"
-            alt="AI Insurance Assistant"
-            width={600}
-            height={500}
-            className="rounded-lg shadow-lg"
-          />
+          
         </div>
       </div>
     </div>
