@@ -48,7 +48,9 @@ export const FileUpload = ({
     
     // Simulate a slight delay to give feedback that processing is happening
     setTimeout(() => {
-      onChange && onChange(newFiles);
+      if (onChange) {
+        onChange(newFiles);
+      }
       setLoading(false);
     }, 500);
   };
